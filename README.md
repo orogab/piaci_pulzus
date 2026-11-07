@@ -1,4 +1,5 @@
-Az oldal egyetlen HTML-fájl, bárhol hosztolható (GitHub Pages, Netlify, saját szerver). Az adatokat a böngészőből kéri le, percenként magától frissül, és van “Frissítés most” gomb is. A kérdésemre a sorszámmal válaszoltál, ezt a saját hosztolásra értettem. Mivel a tartalomra nem adtál preferenciát, mind a négy csoport benne van:
+Az oldal egyetlen HTML-fájl, bárhol hosztolható (GitHub Pages, Netlify, saját szerver). Az adatokat a böngészőből kéri le, percenként magától frissül, és van “Frissítés most” gomb is.
+Négy csoport van benne :
 
 Tőzsdeindexek: S&P 500, Nasdaq, Dow Jones, DAX, BUX és Nikkei, Yahoo Finance adataival.
 Forintárfolyamok: EUR, USD, CHF és GBP forintban, a Frankfurter (EKB) adataival, napi frissítéssel.
