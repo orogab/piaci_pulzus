@@ -1,0 +1,283 @@
+<!doctype html>
+<html lang="hu">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Piaci Pulzus</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<style>
+/* Elrendezés: fejléc állapotsorral, alatta négy adatcsoport (indexek, forint, kripto, nyersanyag) reszponzív csempés rácsban. */
+:root{
+  --bg:#f3f5f7; --surface:#ffffff; --line:#dde2e8; --ink:#14202b; --muted:#5c6b7a;
+  --accent:#0b6e8a;
+  --up:#0e7a4b; --up-bg:#e1f3ea; --down:#b42318; --down-bg:#fbe7e4; --flat:#5c6b7a; --flat-bg:#e9edf1;
+  --font-body:"Instrument Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --font-num:"IBM Plex Mono",ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --bg:#0e1419; --surface:#161e26; --line:#26323d; --ink:#e8eef3; --muted:#8fa0af;
+    --accent:#4cc3df;
+    --up:#4fd18b; --up-bg:#143325; --down:#ff8b7e; --down-bg:#3a1a17; --flat:#8fa0af; --flat-bg:#212c36;
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0e1419; --surface:#161e26; --line:#26323d; --ink:#e8eef3; --muted:#8fa0af;
+  --accent:#4cc3df;
+  --up:#4fd18b; --up-bg:#143325; --down:#ff8b7e; --down-bg:#3a1a17; --flat:#8fa0af; --flat-bg:#212c36;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+html{background:var(--bg)}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--font-body);font-size:15px;line-height:1.45;
+  padding-inline:clamp(16px,4vw,40px);padding-block:20px 48px}
+.wrap{max-width:1180px;margin-inline:auto;display:flex;flex-direction:column;gap:28px}
+header{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:12px 24px;
+  padding-bottom:16px;border-bottom:1px solid var(--line)}
+h1{margin:0;font-size:clamp(1.6rem,4vw,2.2rem);font-weight:700;letter-spacing:-.02em;text-wrap:balance}
+.date{color:var(--muted);font-size:.9rem;margin-top:2px}
+.status{display:flex;align-items:center;gap:10px;flex-wrap:wrap;font-size:.85rem;color:var(--muted)}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--flat)}
+.dot.live{background:var(--up);box-shadow:0 0 0 0 var(--up);animation:pulse 2s infinite}
+.dot.err{background:var(--down)}
+@keyframes pulse{70%{box-shadow:0 0 0 7px transparent}100%{box-shadow:0 0 0 0 transparent}}
+button{font:inherit;color:var(--ink);background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:6px 12px;cursor:pointer}
+button:hover{border-color:var(--accent)}
+button:focus-visible,a:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+section h2{margin:0 0 10px;display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;
+  font-size:.78rem;font-weight:600;text-transform:uppercase;letter-spacing:.09em;color:var(--muted)}
+section h2 .src{text-transform:none;letter-spacing:0;font-weight:400}
+section h2 .warn{color:var(--down);text-transform:none;letter-spacing:0;font-weight:500}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:12px}
+.tile{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:14px 16px 10px;
+  display:flex;flex-direction:column;gap:6px;min-width:0}
+.tile.stale{opacity:.6}
+.top{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+.name{font-weight:600}
+.sub{color:var(--muted);font-size:.8rem}
+.row{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap}
+.val{font-family:var(--font-num);font-size:1.5rem;font-weight:500;font-variant-numeric:tabular-nums;letter-spacing:-.02em}
+.chg{font-family:var(--font-num);font-size:.85rem;font-weight:500;font-variant-numeric:tabular-nums;
+  padding:2px 8px;border-radius:999px;white-space:nowrap}
+.chg.up{color:var(--up);background:var(--up-bg)}
+.chg.down{color:var(--down);background:var(--down-bg)}
+.chg.flat{color:var(--flat);background:var(--flat-bg)}
+svg.spark{width:100%;height:44px;display:block}
+.skeleton{height:118px;border-radius:10px;border:1px solid var(--line);background:var(--surface);opacity:.5}
+footer{color:var(--muted);font-size:.8rem;border-top:1px solid var(--line);padding-top:14px}
+footer a{color:var(--accent)}
+@media (prefers-reduced-motion:reduce){.dot.live{animation:none}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div>
+      <h1>Piaci Pulzus</h1>
+      <div class="date" id="today"></div>
+    </div>
+    <div class="status">
+      <span class="dot" id="dot"></span><span id="statusText">Betöltés…</span>
+      <button id="refresh" type="button">Frissítés most</button>
+    </div>
+  </header>
+
+  <section><h2>Tőzsdeindexek <span class="src" id="src-idx"></span><span class="warn" id="warn-idx"></span></h2><div class="grid" id="idx"></div></section>
+  <section><h2>Forint árfolyamok <span class="src">EKB referenciaárfolyam, Frankfurter</span><span class="warn" id="warn-fx"></span></h2><div class="grid" id="fx"></div></section>
+  <section><h2>Kriptovaluták <span class="src">CoinGecko, USD, 7 napos görbe</span><span class="warn" id="warn-crypto"></span></h2><div class="grid" id="crypto"></div></section>
+  <section><h2>Nyersanyagok <span class="src" id="src-com"></span><span class="warn" id="warn-com"></span></h2><div class="grid" id="com"></div></section>
+
+  <footer>Az adatok tájékoztató jellegűek, késleltetettek lehetnek, és nem minősülnek befektetési tanácsnak. Az oldal percenként magától frissül.</footer>
+</div>
+
+<script>
+/* ===== Beállítások ===== */
+const CONFIG = {
+  refreshSec: 60,
+  // Ajánlott: a worker.js-ből telepített saját proxy címe, pl. "https://piac.fiokod.workers.dev"
+  // Üresen hagyva az oldal közvetlenül próbálkozik, majd egy nyilvános proxyn keresztül.
+  proxy: "",
+  indices: [
+    { sym: "^GSPC",   name: "S&P 500",       sub: "USA" },
+    { sym: "^IXIC",   name: "Nasdaq Comp.",  sub: "USA" },
+    { sym: "^DJI",    name: "Dow Jones",     sub: "USA" },
+    { sym: "^GDAXI",  name: "DAX",           sub: "Németország" },
+    { sym: "^BUX.BD", name: "BUX",           sub: "Magyarország" },
+    { sym: "^N225",   name: "Nikkei 225",    sub: "Japán" },
+  ],
+  commodities: [
+    { sym: "GC=F", name: "Arany",       sub: "USD / uncia",  dec: 2 },
+    { sym: "BZ=F", name: "Brent olaj",  sub: "USD / hordó",  dec: 2 },
+    { sym: "NG=F", name: "Földgáz",     sub: "USD / MMBtu",  dec: 3 },
+  ],
+  fx: [ // egy külföldi pénznem értéke forintban
+    { cur: "EUR", name: "EUR / HUF", sub: "euró" },
+    { cur: "USD", name: "USD / HUF", sub: "amerikai dollár" },
+    { cur: "CHF", name: "CHF / HUF", sub: "svájci frank" },
+    { cur: "GBP", name: "GBP / HUF", sub: "angol font" },
+  ],
+  crypto: [
+    { id: "bitcoin",  name: "Bitcoin",  sub: "BTC" },
+    { id: "ethereum", name: "Ethereum", sub: "ETH" },
+  ],
+};
+
+/* ===== Segédfüggvények ===== */
+const $ = id => document.getElementById(id);
+const nf = (d) => new Intl.NumberFormat("hu-HU", { minimumFractionDigits: d, maximumFractionDigits: d });
+const store = {}; // utolsó sikeres adatok csoportonként
+
+function fmtPct(p){
+  if (p == null || !isFinite(p)) return "–";
+  const s = nf(2).format(Math.abs(p));
+  return (p > 0.005 ? "▲ +" : p < -0.005 ? "▼ −" : "● ") + s + "%";
+}
+function cls(p){ return p > 0.005 ? "up" : p < -0.005 ? "down" : "flat"; }
+
+function spark(series, c){
+  const pts = (series || []).filter(v => v != null && isFinite(v));
+  if (pts.length < 2) return '<svg class="spark" viewBox="0 0 200 44" aria-hidden="true"></svg>';
+  const min = Math.min(...pts), max = Math.max(...pts), rng = (max - min) || 1;
+  const W = 200, H = 44, pad = 4;
+  const xy = pts.map((v, i) => [pad + i * (W - 2 * pad) / (pts.length - 1), H - pad - (v - min) / rng * (H - 2 * pad)]);
+  const line = xy.map(p => p[0].toFixed(1) + "," + p[1].toFixed(1)).join(" ");
+  const area = line + " " + (W - pad) + "," + H + " " + pad + "," + H;
+  const col = "var(--" + (c === "flat" ? "flat" : c) + ")";
+  const last = xy[xy.length - 1];
+  return '<svg class="spark" viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="none" aria-hidden="true">' +
+    '<polygon points="' + area + '" fill="' + col + '" fill-opacity=".12"/>' +
+    '<polyline points="' + line + '" fill="none" stroke="' + col + '" stroke-width="1.6" vector-effect="non-scaling-stroke" stroke-linejoin="round"/>' +
+    '<circle cx="' + last[0].toFixed(1) + '" cy="' + last[1].toFixed(1) + '" r="2.6" fill="' + col + '"/></svg>';
+}
+
+function tile(t){
+  const c = cls(t.chg);
+  return '<article class="tile' + (t.stale ? " stale" : "") + '">' +
+    '<div class="top"><span class="name">' + t.name + '</span><span class="sub">' + t.sub + '</span></div>' +
+    '<div class="row"><span class="val">' + t.valueText + '</span><span class="chg ' + c + '">' + fmtPct(t.chg) + '</span></div>' +
+    spark(t.series, c) + '</article>';
+}
+function render(group, items, warnId, warn){
+  $(group).innerHTML = items.map(tile).join("");
+  $(warnId).textContent = warn || "";
+}
+
+async function getJSON(url){
+  const r = await fetch(url, { cache: "no-store" });
+  if (!r.ok) throw new Error("HTTP " + r.status);
+  return r.json();
+}
+
+/* ===== Forrásonkénti lekérők ===== */
+async function yahoo(sym){
+  const target = "https://query1.finance.yahoo.com/v8/finance/chart/" + encodeURIComponent(sym) + "?range=1d&interval=15m";
+  const tries = [];
+  if (CONFIG.proxy) tries.push(CONFIG.proxy.replace(/\/$/, "") + "/?url=" + encodeURIComponent(target));
+  else { tries.push(target); tries.push("https://corsproxy.io/?url=" + encodeURIComponent(target)); }
+  let err;
+  for (const u of tries){
+    try{
+      const j = await getJSON(u);
+      const res = j.chart.result[0], m = res.meta;
+      const closes = (res.indicators.quote[0].close || []).filter(v => v != null);
+      const price = m.regularMarketPrice, prev = m.chartPreviousClose;
+      return { price, chg: prev ? (price - prev) / prev * 100 : null, series: closes };
+    }catch(e){ err = e; }
+  }
+  throw err;
+}
+
+async function loadYahooGroup(key, list, group, warnId, decDefault){
+  const settled = await Promise.allSettled(list.map(x => yahoo(x.sym)));
+  const prev = store[key] || {};
+  let failed = 0;
+  const items = list.map((x, i) => {
+    const s = settled[i];
+    if (s.status === "fulfilled"){
+      const d = x.dec ?? decDefault;
+      const t = { name: x.name, sub: x.sub, valueText: nf(d).format(s.value.price), chg: s.value.chg, series: s.value.series };
+      prev[x.sym] = t; return t;
+    }
+    failed++;
+    return prev[x.sym] ? { ...prev[x.sym], stale: true } : { name: x.name, sub: x.sub, valueText: "–", chg: null, series: [], stale: true };
+  });
+  store[key] = prev;
+  render(group, items, warnId, failed ? (failed === list.length ? "Nem elérhető" : failed + " tétel nem elérhető") : "");
+  return failed < list.length;
+}
+
+async function loadFx(){
+  const from = new Date(Date.now() - 35 * 864e5).toISOString().slice(0, 10);
+  const syms = CONFIG.fx.map(x => x.cur).filter(c => c !== "EUR").concat("HUF").join(",");
+  try{
+    const j = await getJSON("https://api.frankfurter.dev/v1/" + from + "..?base=EUR&symbols=" + syms);
+    const days = Object.keys(j.rates).sort();
+    const huf = d => j.rates[d].HUF;
+    const rate = (d, cur) => cur === "EUR" ? huf(d) : huf(d) / j.rates[d][cur];
+    const items = CONFIG.fx.map(x => {
+      const series = days.map(d => rate(d, x.cur));
+      const last = series[series.length - 1], prev = series[series.length - 2];
+      return { name: x.name, sub: x.sub, valueText: nf(2).format(last), chg: prev ? (last - prev) / prev * 100 : null, series };
+    });
+    store.fx = items;
+    render("fx", items, "warn-fx", "");
+    return days[days.length - 1];
+  }catch(e){
+    render("fx", (store.fx || CONFIG.fx.map(x => ({ name: x.name, sub: x.sub, valueText: "–", chg: null, series: [] }))).map(t => ({ ...t, stale: true })), "warn-fx", "Nem elérhető");
+    return null;
+  }
+}
+
+async function loadCrypto(){
+  const ids = CONFIG.crypto.map(c => c.id).join(",");
+  try{
+    const j = await getJSON("https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&ids=" + ids + "&sparkline=true&price_change_percentage=24h");
+    const items = CONFIG.crypto.map(c => {
+      const d = j.find(x => x.id === c.id);
+      const p = d.current_price;
+      return { name: c.name, sub: c.sub, valueText: "$" + nf(p >= 1000 ? 0 : 2).format(p),
+        chg: d.price_change_percentage_24h_in_currency ?? d.price_change_percentage_24h, series: d.sparkline_in_7d.price };
+    });
+    store.crypto = items;
+    render("crypto", items, "warn-crypto", "");
+    return true;
+  }catch(e){
+    render("crypto", (store.crypto || CONFIG.crypto.map(c => ({ name: c.name, sub: c.sub, valueText: "–", chg: null, series: [] }))).map(t => ({ ...t, stale: true })), "warn-crypto", "Nem elérhető");
+    return false;
+  }
+}
+
+/* ===== Vezérlés ===== */
+let busy = false;
+async function refreshAll(){
+  if (busy) return; busy = true;
+  $("refresh").disabled = true; $("statusText").textContent = "Frissítés…";
+  const r = await Promise.all([
+    loadYahooGroup("idx", CONFIG.indices, "idx", "warn-idx", 2),
+    loadFx(),
+    loadCrypto(),
+    loadYahooGroup("com", CONFIG.commodities, "com", "warn-com", 2),
+  ]);
+  const ok = r.filter(Boolean).length;
+  $("dot").className = "dot " + (ok === 4 ? "live" : ok === 0 ? "err" : "");
+  $("statusText").textContent = (ok === 0 ? "Nincs kapcsolat az adatforrásokkal" : "Frissítve: " + new Date().toLocaleTimeString("hu-HU")) ;
+  $("refresh").disabled = false; busy = false;
+}
+
+function init(){
+  $("today").textContent = new Date().toLocaleDateString("hu-HU", { year: "numeric", month: "long", day: "numeric", weekday: "long" });
+  $("src-idx").textContent = "Yahoo Finance, napon belüli görbe";
+  $("src-com").textContent = "Yahoo Finance, határidős árak";
+  ["idx","fx","crypto","com"].forEach(g => $(g).innerHTML = '<div class="skeleton"></div>'.repeat({idx:6,fx:4,crypto:2,com:3}[g]));
+  $("refresh").addEventListener("click", refreshAll);
+  refreshAll();
+  setInterval(() => { if (!document.hidden) refreshAll(); }, CONFIG.refreshSec * 1000);
+  document.addEventListener("visibilitychange", () => { if (!document.hidden) refreshAll(); });
+}
+init();
+</script>
+</body>
+</html>
